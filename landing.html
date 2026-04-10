@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoTrace — Know Your Carbon Footprint</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink:      #0D1A0F;
+  --ink2:     #1C2E1E;
+  --moss:     #2D4A30;
+  --forest:   #3D6B42;
+  --leaf:     #5A9A5F;
+  --mint:     #8FCA8C;
+  --sage:     #B8D9B5;
+  --cream:    #F2EDE4;
+  --paper:    #FAF8F3;
+  --amber:    #C9892A;
+  --amber-lt: #F5E6CC;
+  --red:      #C0392B;
+  --muted:    #6B7D6C;
+  --hint:     #9BAA9C;
+  --border:   rgba(45,74,48,0.18);
+  --r:        14px;
+  --r-lg:     22px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--ink);
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 48px;
+  background: rgba(13,26,15,0.7);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; color: var(--mint);
+  text-decoration: none;
+}
+.logo-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--leaf);
+  box-shadow: 0 0 12px var(--leaf);
+}
+.nav-links { display: flex; align-items: center; gap: 32px; }
+.nav-links a {
+  font-size: 14px; font-weight: 400;
+  color: var(--hint); text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--cream); }
+.nav-cta { display: flex; gap: 10px; }
+
+.btn-solid {
+  padding: 9px 22px;
+  border: none; border-radius: 100px;
+  background: var(--leaf);
+  color: var(--ink);
+  font-size: 14px; font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-solid:hover { background: var(--mint); transform: translateY(-1px); }
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 20% 50%, rgba(45,74,48,0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 70% at 80% 30%, rgba(61,107,66,0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 60% 80%, rgba(90,154,95,0.12) 0%, transparent 60%);
+}
+.ring {
+  position: absolute;
+  border: 1px solid rgba(143,202,140,0.08);
+  border-radius: 50%;
+  animation: expand 12s ease-in-out infinite;
+}
+.ring:nth-child(1) { width: 300px; height: 300px; top: 50%; left: 20%; transform: translate(-50%,-50%); animation-delay: 0s; }
+.ring:nth-child(2) { width: 550px; height: 550px; top: 50%; left: 20%; transform: translate(-50%,-50%); animation-delay: 2s; }
+.ring:nth-child(3) { width: 800px; height: 800px; top: 50%; left: 20%; transform: translate(-50%,-50%); animation-delay: 4s; }
+
+@keyframes expand {
+  0%,100% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+  50%      { opacity: 0.1; transform: translate(-50%,-50%) scale(1.06); }
+}
+
+.particle {
+  position: absolute;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--leaf); opacity: 0;
+  animation: float-up 8s ease-in infinite;
+}
+@keyframes float-up {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  20%  { opacity: 0.6; }
+  80%  { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-120px) scale(1.2); }
+}
+
+.hero-content {
+  position: relative; z-index: 2;
+  max-width: 640px;
+  text-align: left;
+  padding: 120px 48px 80px;
+  animation: hero-in 1s ease both;
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(90,154,95,0.15);
+  border: 1px solid rgba(90,154,95,0.3);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 12px; font-weight: 500;
+  color: var(--mint);
+  letter-spacing: 0.06em;
+  margin-bottom: 28px;
+}
+.badge-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--leaf);
+  box-shadow: 0 0 8px var(--leaf);
+  animation: pulse 2s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(38px, 6vw, 62px);
+  line-height: 1.1;
+  color: var(--paper);
+  margin-bottom: 22px;
+}
+.hero h1 em { font-style: italic; color: var(--mint); }
+.hero p {
+  font-size: 17px; font-weight: 300;
+  line-height: 1.7; color: var(--sage);
+  max-width: 500px;
+  margin-bottom: 36px;
+}
+.hero-actions { display: flex; align-items: center; gap: 16px; }
+
+.btn-hero {
+  padding: 14px 32px;
+  border: none; border-radius: 100px;
+  background: var(--leaf);
+  color: var(--ink);
+  font-size: 15px; font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.25s;
+  box-shadow: 0 4px 24px rgba(90,154,95,0.35);
+  display: inline-block;
+}
+.btn-hero:hover {
+  background: var(--mint);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(90,154,95,0.5);
+}
+.btn-hero-outline {
+  padding: 14px 32px;
+  border: 1px solid rgba(143,202,140,0.3);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--sage);
+  font-size: 15px; font-family: 'Outfit', sans-serif;
+  cursor: pointer; text-decoration: none;
+  transition: all 0.2s;
+  display: inline-block;
+}
+.btn-hero-outline:hover { border-color: var(--leaf); color: var(--mint); }
+
+.hero-stats {
+  display: flex; gap: 36px;
+  margin-top: 52px;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+}
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; color: var(--mint);
+}
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.hero-visual {
+  position: absolute; right: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 45%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.earth-wrap { position: relative; width: 360px; height: 360px; }
+.earth-circle {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--forest), var(--ink2));
+  border: 1px solid rgba(90,154,95,0.2);
+  overflow: hidden; position: relative;
+}
+.orbit {
+  position: absolute; top: 50%; left: 50%;
+  border: 1px solid rgba(143,202,140,0.15);
+  border-radius: 50%;
+  animation: orbit-spin 20s linear infinite;
+}
+.orbit-1 { width: 420px; height: 420px; margin: -210px 0 0 -210px; }
+.orbit-2 { width: 500px; height: 320px; margin: -160px 0 0 -250px; animation-duration: 30s; animation-direction: reverse; }
+@keyframes orbit-spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+.dot-sat {
+  position: absolute; top: -5px; left: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 12px var(--mint);
+  transform: translateX(-50%);
+}
+
+/* ── FEATURES ── */
+.section {
+  max-width: 1080px; margin: 0 auto;
+  padding: 96px 48px;
+  position: relative; z-index: 1;
+}
+.section-label {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--leaf); margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(28px, 4vw, 42px);
+  color: var(--paper); line-height: 1.2;
+  margin-bottom: 48px;
+}
+.section-title em { font-style: italic; color: var(--mint); }
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.feat-card {
+  background: rgba(28,46,30,0.5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 28px;
+  transition: transform 0.25s, border-color 0.25s;
+  backdrop-filter: blur(8px);
+}
+.feat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(90,154,95,0.35);
+}
+.feat-icon { font-size: 28px; margin-bottom: 16px; display: block; }
+.feat-title { font-size: 16px; font-weight: 600; color: var(--paper); margin-bottom: 8px; }
+.feat-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ── HOW IT WORKS ── */
+.steps-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0; position: relative;
+}
+.steps-row::before {
+  content: '';
+  position: absolute; top: 28px; left: 12.5%; right: 12.5%;
+  height: 1px; background: var(--border);
+}
+.step-item { text-align: center; padding: 0 16px; }
+.step-num {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--ink2);
+  border: 1px solid rgba(90,154,95,0.3);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: var(--mint);
+  position: relative; z-index: 1;
+}
+.step-title { font-size: 14px; font-weight: 600; color: var(--paper); margin-bottom: 6px; }
+.step-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* ── CTA BAND ── */
+.cta-band {
+  background: linear-gradient(135deg, var(--moss) 0%, var(--ink2) 100%);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center; padding: 80px 48px;
+  position: relative; overflow: hidden;
+}
+.cta-band h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(26px, 4vw, 40px);
+  color: var(--paper); margin-bottom: 14px;
+}
+.cta-band p { font-size: 16px; color: var(--sage); margin-bottom: 32px; }
+
+/* ── FOOTER ── */
+footer {
+  background: rgba(10,18,11,0.8);
+  border-top: 1px solid var(--border);
+  padding: 40px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-logo { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--mint); }
+.footer-links { display: flex; gap: 28px; }
+.footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--sage); }
+.footer-copy { font-size: 12px; color: var(--hint); }
+
+@media (max-width: 900px) {
+  nav { padding: 14px 24px; }
+  .nav-links { display: none; }
+  .hero-visual { display: none; }
+  .hero-content { padding: 110px 24px 60px; max-width: 100%; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .steps-row { grid-template-columns: 1fr 1fr; }
+  .steps-row::before { display: none; }
+  .section { padding: 64px 24px; }
+  footer { flex-direction: column; gap: 20px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo">
+    <span class="logo-dot"></span>
+    EcoTrace
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+  </div>
+  <div class="nav-cta">
+    <a href="index.html" class="btn-solid">Get started</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+  </div>
+
+  <div id="particles"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-pulse"></span>
+      Free carbon assessment tool
+    </div>
+    <h1>Understand your <em>impact</em> on the planet</h1>
+    <p>EcoTrace analyses your lifestyle across transport, diet, energy, and shopping — then gives you a personalised roadmap to reduce your carbon footprint.</p>
+    <div class="hero-actions">
+      <a href="index.html" class="btn-hero">Start free assessment</a>
+      <a href="#how" class="btn-hero-outline">See how it works →</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-num">6</div>
+        <div class="stat-label">quick questions</div>
+      </div>
+      <div>
+        <div class="stat-num">5</div>
+        <div class="stat-label">lifestyle categories</div>
+      </div>
+      <div>
+        <div class="stat-num">∞</div>
+        <div class="stat-label">ways to improve</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="earth-wrap">
+      <div class="orbit orbit-1"><div class="dot-sat"></div></div>
+      <div class="orbit orbit-2"></div>
+      <div class="earth-circle"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="section-label">What you get</div>
+  <div class="section-title">Everything you need to <em>act</em> now</div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <span class="feat-icon">🌡️</span>
+      <div class="feat-title">Accurate footprint score</div>
+      <div class="feat-desc">A science-based estimate of your annual CO₂ emissions in tonnes, broken down by category.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🗺️</span>
+      <div class="feat-title">Personalised action plan</div>
+      <div class="feat-desc">Targeted recommendations ranked by impact — tailored to your lifestyle.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">📉</span>
+      <div class="feat-title">Track your progress</div>
+      <div class="feat-desc">Reassess monthly to see how your changes compound into meaningful reductions.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how" style="padding-top:0">
+  <div class="section-label">The process</div>
+  <div class="section-title">Four steps to <em>clarity</em></div>
+  <div class="steps-row">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-title">Answer 6 questions</div>
+      <div class="step-desc">Transport, diet, energy, and more — 3 minutes total.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-title">Get your score</div>
+      <div class="step-desc">Instant footprint estimate in tonnes CO₂e per year.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-title">See your plan</div>
+      <div class="step-desc">Personalised top actions ranked by savings potential.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div class="step-title">Track & reduce</div>
+      <div class="step-desc">Reassess over time and watch your footprint shrink.</div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-band">
+  <h2>Ready to know your number?</h2>
+  <p>Join thousands of people already reducing their impact with EcoTrace.</p>
+  <a href="index.html" class="btn-hero">Start Assessment Now</a>
+</div>
+
+<footer>
+  <div class="footer-logo">EcoTrace</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Methodology</a>
+  </div>
+  <div class="footer-copy">© 2026 EcoTrace. All rights reserved.</div>
+</footer>
+
+<script>
+// Particles animation
+const pc = document.getElementById('particles');
+for (let i = 0; i < 18; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.cssText = `
+    left:${Math.random()*45+5}%;
+    bottom:${Math.random()*60}%;
+    animation-delay:${Math.random()*8}s;
+    animation-duration:${6+Math.random()*6}s;
+    width:${2+Math.random()*4}px;
+    height:${2+Math.random()*4}px;
+    opacity:${0.2+Math.random()*0.5}`;
+  pc.appendChild(p);
+}
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      e.target.style.animation = `hero-in 0.5s ease ${i*0.07}s both`;
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.feat-card, .step-item').forEach(el => {
+  el.style.opacity = '0';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
